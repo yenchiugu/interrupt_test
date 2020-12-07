@@ -57,7 +57,8 @@ public:
                         Lockable& lk_):
                 self(self_),lk(lk_)
             {
-                self->set_clear_mutex.lock();
+                //self->set_clear_mutex.lock();
+                lock();
                 self->thread_cond_any=&cond;
             }
 
@@ -75,6 +76,7 @@ public:
             ~custom_lock()
             {
                 self->thread_cond_any=0;
+                unlock();
                 //                self->set_clear_mutex.unlock();
             }
         };
@@ -142,22 +144,28 @@ public:
         }
     }
 };
-
+std::mutex config_mutex;
+std::condition_variable_any cv;
 void background_thread() {
     static int i = 0;
     while (true) {
         interruption_point();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
         std::cout << "do work" <<i++ << std::endl;
+        
+        interruptible_wait(cv, config_mutex);
+        
     }
 }
 
-std::mutex config_mutex;
+
 std::vector<interruptible_thread> background_threads;
+
 
 int main()
 {
-    std::unique_lock<std::mutex> lk(config_mutex);
+    //std::unique_lock<std::mutex> lk(config_mutex);
     background_threads.push_back(
         interruptible_thread(background_thread));
     background_threads.push_back(
@@ -165,7 +173,7 @@ int main()
     background_threads.push_back(
         interruptible_thread(background_thread));
 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(3));
 
     for (unsigned i = 0; i < background_threads.size(); ++i)
     {
