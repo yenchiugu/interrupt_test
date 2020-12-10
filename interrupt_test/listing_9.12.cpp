@@ -85,7 +85,8 @@ public:
 
         custom_lock cl(this,cv,lk);
         interruption_point();
-        cv.wait(cl);
+        
+        cv.wait(cl, [&]{ return this->is_set(); });
         interruption_point();
     }
 
